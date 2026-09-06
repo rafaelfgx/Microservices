@@ -1,0 +1,459 @@
+# Full: docker compose --profile full up --detach --build --remove-orphans
+# Dev: docker compose up --detach --remove-orphans
+
+name: microservices
+
+x-healthcheck: &healthcheck
+    start_period: 30s
+    start_interval: 5s
+    interval: 30s
+    timeout: 5s
+    retries: 3
+
+x-logging: &logging
+    driver: json-file
+    options:
+        max-size: "10m"
+        max-file: "3"
+
+x-resources-small: &resources-small
+    resources:
+        limits:
+            cpus: "0.5"
+            memory: 512M
+
+x-resources-medium: &resources-medium
+    resources:
+        limits:
+            cpus: "1.0"
+            memory: 1G
+
+x-resources-large: &resources-large
+    resources:
+        limits:
+            cpus: "2.0"
+            memory: 2G
+
+x-build: &build
+    context: ..
+    dockerfile: .docker/dockerfile
+
+x-infrastructure: &infrastructure
+    keycloak:
+        condition: service_healthy
+    kafka:
+        condition: service_healthy
+    mongo:
+        condition: service_healthy
+    redis:
+        condition: service_healthy
+
+x-environment: &environment
+    ELASTIC_APM_SERVER_URL: http://apm:8200
+    ELASTIC_APM_APPLICATION_PACKAGES: com.company
+    SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_DEFAULT_ISSUER_URI: http://keycloak:8080/realms/microservices
+    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/microservices
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+    SPRING_MONGODB_URI: mongodb://admin:password@mongo:27017/$${spring.application.name}?authSource=admin&replicaSet=microservices
+    SPRING_DATA_REDIS_HOST: redis
+    SPRING_DATA_REDIS_PORT: 6379
+    SPRING_DATA_REDIS_PASSWORD: password
+    LOGGING_STRUCTURED_FORMAT_CONSOLE: ecs
+
+x-service: &service
+    profiles: ["full"]
+    restart: unless-stopped
+    networks:
+        - network
+    deploy: *resources-medium
+    logging: *logging
+    labels:
+        filebeat: "true"
+    healthcheck:
+        <<: *healthcheck
+        start_period: 60s
+        test: ["CMD-SHELL", "wget --spider -q http://localhost:$$PORT/actuator/health"]
+
+services:
+    keycloak:
+        image: quay.io/keycloak/keycloak
+        container_name: keycloak
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-medium
+        logging: *logging
+        ports:
+            - "8005:8080"
+        volumes:
+            - keycloak:/opt/keycloak/data
+            - ./keycloak.json:/opt/keycloak/data/import/realm.json
+        environment:
+            KC_BOOTSTRAP_ADMIN_USERNAME: admin
+            KC_BOOTSTRAP_ADMIN_PASSWORD: password
+            KC_HEALTH_ENABLED: true
+            KC_LOG_LEVEL: warn
+        command: ["start-dev", "--import-realm"]
+        healthcheck:
+            <<: *healthcheck
+            start_period: 30s
+            test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\r\n\r\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+    kafka:
+        image: apache/kafka
+        container_name: kafka
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-large
+        logging: *logging
+        ports:
+            - "127.0.0.1:9092:9092"
+        environment:
+            KAFKA_NODE_ID: 1
+            KAFKA_PROCESS_ROLES: broker,controller
+            KAFKA_LISTENERS: CONTROLLER://:9093,PLAINTEXT://:9094,EXTERNAL://:9092
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9094,EXTERNAL://localhost:9092
+            KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+            KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+            KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+        command: >
+            sh -c "/etc/kafka/docker/run & sleep 10;
+            /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9094 --create --if-not-exists --topic orders.created;
+            /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9094 --create --if-not-exists --topic payments.approved;
+            /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9094 --create --if-not-exists --topic payments.canceled;
+            wait;"
+        healthcheck:
+            <<: *healthcheck
+            start_period: 30s
+            test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9094 > /dev/null 2>&1"]
+    kafka-admin:
+        image: ghcr.io/kafbat/kafka-ui
+        container_name: kafka-admin
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-small
+        depends_on:
+            kafka:
+                condition: service_healthy
+        ports:
+            - "127.0.0.1:9000:8080"
+        environment:
+            KAFKA_CLUSTERS_0_NAME: microservices
+            KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9094
+            LOGGING_LEVEL_ROOT: WARN
+        healthcheck:
+            <<: *healthcheck
+            test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
+        logging: *logging
+    mongo:
+        image: mongo
+        container_name: mongo
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-medium
+        ports:
+            - "127.0.0.1:27017:27017"
+        volumes:
+            - mongo:/data/db
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: admin
+            MONGO_INITDB_ROOT_PASSWORD: password
+        entrypoint: ["bash", "-c", "openssl rand -base64 741 > /data/keyfile && chown 999:999 /data/keyfile && chmod 600 /data/keyfile && exec docker-entrypoint.sh mongod --quiet --replSet microservices --bind_ip_all --port 27017 --keyFile /data/keyfile"]
+        healthcheck:
+            <<: *healthcheck
+            test: ["CMD-SHELL", "mongosh -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --quiet --eval \"try { rs.status() } catch (e) { rs.initiate({ _id:'microservices', members:[{ _id:0, host:'mongo:27017' }] }) }\""]
+        logging: *logging
+    mongo-admin:
+        image: mongo-express
+        container_name: mongo-admin
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-small
+        depends_on:
+            mongo:
+                condition: service_healthy
+        ports:
+            - "127.0.0.1:27018:8081"
+        environment:
+            ME_CONFIG_MONGODB_URL: mongodb://admin:password@mongo:27017/admin?authSource=admin&replicaSet=microservices
+            ME_CONFIG_BASICAUTH: "false"
+        healthcheck:
+            <<: *healthcheck
+            test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081"]
+        logging: *logging
+    redis:
+        image: redis
+        container_name: redis
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-small
+        logging: *logging
+        ports:
+            - "127.0.0.1:6379:6379"
+        volumes:
+            - redis:/data
+        command:
+            - redis-server
+            - --requirepass
+            - password
+            - --loglevel
+            - warning
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --dir
+            - /data
+        healthcheck:
+            <<: *healthcheck
+            test: ["CMD-SHELL", "redis-cli --no-auth-warning -a password ping | grep -q PONG"]
+    redis-admin:
+        image: redis/redisinsight
+        container_name: redis-admin
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-small
+        depends_on:
+            redis:
+                condition: service_healthy
+        ports:
+            - "127.0.0.1:6380:5540"
+        environment:
+            RI_REDIS_HOST: redis
+            RI_REDIS_PORT: 6379
+            RI_REDIS_PASSWORD: password
+            RI_ACCEPT_TERMS_AND_CONDITIONS: "true"
+            RI_LOG_LEVEL: warn
+            NODE_NO_WARNINGS: "1"
+        healthcheck:
+            <<: *healthcheck
+            test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:5540/api/health/"]
+        logging: *logging
+    kong:
+        image: kong
+        container_name: kong
+        profiles: ["full"]
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-small
+        logging: *logging
+        ports:
+            - "8000:8000"
+            - "127.0.0.1:8001:8001"
+            - "127.0.0.1:8002:8002"
+            - "8443:8443"
+        volumes:
+            - ./kong.yml:/usr/local/kong/declarative/kong.yml
+        environment:
+            KONG_DATABASE: "off"
+            KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
+            KONG_ADMIN_LISTEN: 0.0.0.0:8001
+            KONG_LOG_LEVEL: warn
+            KONG_PROXY_ACCESS_LOG: "off"
+            KONG_ADMIN_ACCESS_LOG: "off"
+        healthcheck:
+            <<: *healthcheck
+            test: ["CMD", "kong", "health"]
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.0
+        container_name: elasticsearch
+        profiles: ["full"]
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-large
+        logging: *logging
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        ports:
+            - "127.0.0.1:9200:9200"
+        volumes:
+            - elasticsearch:/usr/share/elasticsearch/data
+        environment:
+            discovery.type: single-node
+            xpack.security.enabled: false
+            bootstrap.memory_lock: true
+            logger.org.elasticsearch: warn
+            ES_JAVA_OPTS: -Xms1g -Xmx1g
+        healthcheck:
+            <<: *healthcheck
+            start_period: 30s
+            test: ["CMD", "curl", "-fsS", "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s"]
+    kibana:
+        image: docker.elastic.co/kibana/kibana:9.5.0
+        container_name: kibana
+        profiles: ["full"]
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-large
+        logging: *logging
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+        ports:
+            - "127.0.0.1:5601:5601"
+        environment:
+            ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+            LOGGING_ROOT_LEVEL: warn
+        healthcheck:
+            <<: *healthcheck
+            start_period: 30s
+            test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+    filebeat:
+        image: docker.elastic.co/beats/filebeat:9.5.0
+        container_name: filebeat
+        profiles: ["full"]
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-small
+        logging: *logging
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+        user: root
+        volumes:
+            - filebeat:/usr/share/filebeat/data
+            - /var/lib/docker/containers:/var/lib/docker/containers:ro
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+        command: ["-e", "--strict.perms=false"]
+        healthcheck:
+            <<: *healthcheck
+            interval: 60s
+            timeout: 20s
+            test: ["CMD", "filebeat", "test", "output", "--strict.perms=false"]
+    apm:
+        image: docker.elastic.co/apm/apm-server:9.5.0
+        container_name: apm
+        profiles: ["full"]
+        restart: unless-stopped
+        networks:
+            - network
+        deploy: *resources-small
+        logging: *logging
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+            kibana:
+                condition: service_healthy
+        ports:
+            - "8200:8200"
+        command: ["--strict.perms=false", "-E", "logging.level=warning"]
+        healthcheck:
+            <<: *healthcheck
+            test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8200; printf 'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; read -r status <&3; [[ $$status == *'200 OK'* ]]"]
+    authservice:
+        <<: *service
+        image: authservice
+        container_name: authservice
+        depends_on:
+            <<: *infrastructure
+        build:
+            <<: *build
+            args:
+                NAME: authservice
+        ports:
+            - "9010:8010"
+        environment:
+            <<: *environment
+            PORT: 8010
+            AUTH_URL: http://keycloak:8080
+    configurationservice:
+        <<: *service
+        image: configurationservice
+        container_name: configurationservice
+        depends_on: *infrastructure
+        build:
+            <<: *build
+            args:
+                NAME: configurationservice
+        ports:
+            - "9015:8015"
+        environment:
+            <<: *environment
+            PORT: 8015
+    customerservice:
+        <<: *service
+        image: customerservice
+        container_name: customerservice
+        depends_on:
+            <<: *infrastructure
+            authservice:
+                condition: service_healthy
+        build:
+            <<: *build
+            args:
+                NAME: customerservice
+        ports:
+            - "9020:8020"
+        environment:
+            <<: *environment
+            PORT: 8020
+            CLIENTS_AUTH_URL: http://authservice:8010
+    productservice:
+        <<: *service
+        image: productservice
+        container_name: productservice
+        depends_on:
+            <<: *infrastructure
+        build:
+            <<: *build
+            args:
+                NAME: productservice
+        ports:
+            - "9025:8025"
+        environment:
+            <<: *environment
+            PORT: 8025
+    orderservice:
+        <<: *service
+        image: orderservice
+        container_name: orderservice
+        depends_on:
+            <<: *infrastructure
+        build:
+            <<: *build
+            args:
+                NAME: orderservice
+        ports:
+            - "9030:8030"
+        environment:
+            <<: *environment
+            PORT: 8030
+    paymentservice:
+        <<: *service
+        image: paymentservice
+        container_name: paymentservice
+        depends_on:
+            <<: *infrastructure
+        build:
+            <<: *build
+            args:
+                NAME: paymentservice
+        ports:
+            - "9035:8035"
+        environment:
+            <<: *environment
+            PORT: 8035
+volumes:
+    keycloak:
+    mongo:
+    redis:
+    elasticsearch:
+    filebeat:
+networks:
+    network:

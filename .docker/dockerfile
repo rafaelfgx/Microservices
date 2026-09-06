@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+
+FROM maven:3-eclipse-temurin-25-alpine AS build
+ARG NAME
+ENV MAVEN_ARGS="--batch-mode --no-transfer-progress -Dmaven.test.skip=true"
+
+WORKDIR /parent
+COPY parent/pom.xml .
+RUN --mount=type=cache,id=maven,target=/root/.m2,sharing=locked mvn install
+
+WORKDIR /starter
+COPY starter .
+RUN --mount=type=cache,id=maven,target=/root/.m2,sharing=locked mvn install
+
+WORKDIR /source
+COPY ${NAME} .
+RUN --mount=type=cache,id=maven,target=/root/.m2,sharing=locked mvn package
+RUN cp target/*.jar app.jar && java -Djarmode=tools -jar app.jar extract --layers --destination /extracted
+
+FROM eclipse-temurin:25-jre-alpine
+RUN addgroup -S app && adduser -S app -G app
+WORKDIR /app
+COPY --from=build /extracted/dependencies/ ./
+COPY --from=build /extracted/spring-boot-loader/ ./
+COPY --from=build /extracted/snapshot-dependencies/ ./
+COPY --from=build /extracted/application/ ./
+COPY --from=docker.elastic.co/observability/apm-agent-java /usr/agent/elastic-apm-agent.jar /elastic-apm-agent.jar
+USER app
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-XX:+ExitOnOutOfMemoryError", "-javaagent:/elastic-apm-agent.jar", "-jar", "app.jar"]

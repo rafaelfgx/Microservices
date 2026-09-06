@@ -1,0 +1,258 @@
+server:
+    shutdown: graceful
+    forward-headers-strategy: framework
+    max-http-request-header-size: 16KB
+    http2:
+        enabled: true
+    compression:
+        enabled: true
+        mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
+        min-response-size: 2KB
+    tomcat:
+        accept-count: 100
+        connection-timeout: 60s
+        keep-alive-timeout: 60s
+        max-connections: 8192
+        max-http-form-post-size: 10MB
+        max-http-response-header-size: 16KB
+        max-keep-alive-requests: 100
+        max-parameter-count: 1000
+        max-swallow-size: 10MB
+spring:
+    application:
+        name: starter
+    main:
+        banner-mode: "off"
+        allow-bean-definition-overriding: false
+    jackson:
+        default-property-inclusion: non_empty
+        datatype:
+            datetime:
+                write-dates-as-timestamps: false
+                write-durations-as-timestamps: false
+        deserialization:
+            accept-empty-array-as-null-object: true
+            accept-empty-string-as-null-object: true
+            fail-on-null-for-primitives: true
+            fail-on-unknown-properties: false
+            use-big-decimal-for-floats: true
+        serialization:
+            fail-on-empty-beans: false
+            order-map-entries-by-keys: true
+    web:
+        error:
+            include-binding-errors: never
+            include-exception: false
+            include-message: never
+            include-path: always
+            include-stacktrace: never
+            whitelabel:
+                enabled: false
+    mvc:
+        log-request-details: false
+        problemdetails:
+            enabled: false
+        format:
+            date: iso
+            date-time: iso
+            time: iso
+        servlet:
+            load-on-startup: 1
+    servlet:
+        multipart:
+            enabled: true
+            max-file-size: 10MB
+            max-request-size: 10MB
+    threads:
+        virtual:
+            enabled: true
+    lifecycle:
+        timeout-per-shutdown-phase: 30s
+    security:
+        oauth2:
+            resourceserver:
+                jwt:
+                    issuer-uri: http://localhost:8005/realms/microservices
+            client:
+                registration:
+                    default:
+                        client-id: ${spring.application.name}
+                        client-secret: ${spring.application.name}
+                        authorization-grant-type: client_credentials
+                provider:
+                    default:
+                        issuer-uri: http://localhost:8005/realms/microservices
+    data:
+        web:
+            pageable:
+                default-page-size: 20
+                max-page-size: 2000
+                one-indexed-parameters: false
+                page-parameter: page
+                size-parameter: size
+                serialization-mode: via-dto
+            sort:
+                sort-parameter: sort
+        redis:
+            host: localhost
+            port: 6379
+            password: password
+            timeout: 5s
+            connect-timeout: 5s
+            repositories:
+                enabled: false
+        mongodb:
+            auto-index-creation: true
+    cache:
+        type: redis
+        redis:
+            time-to-live: PT24H
+            cache-null-values: false
+            use-key-prefix: true
+            key-prefix: "${spring.application.name}:"
+    mongodb:
+        uri: mongodb://admin:password@localhost:27017/${spring.application.name}?authSource=admin&directConnection=true
+        representation.uuid: standard
+    kafka:
+        bootstrap-servers: localhost:9092
+        client-id: ${spring.application.name}
+        admin:
+            auto-create: true
+            fail-fast: false
+            modify-topic-configs: false
+        template:
+            observation-enabled: true
+        producer:
+            key-serializer: org.apache.kafka.common.serialization.StringSerializer
+            value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+            acks: all
+            retries: 3
+            compression-type: zstd
+            batch-size: 32KB
+            buffer-memory: 32MB
+            properties:
+                enable.idempotence: true
+                max.in.flight.requests.per.connection: 5
+                linger.ms: 20
+                request.timeout.ms: 30000
+                delivery.timeout.ms: 120000
+        consumer:
+            key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+            value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+            enable-auto-commit: false
+            group-id: ${spring.application.name}
+            auto-offset-reset: latest
+            isolation-level: read_committed
+            max-poll-records: 500
+            max-poll-interval: 5m
+            fetch-min-size: 16KB
+            fetch-max-wait: 500ms
+            properties:
+                allow.auto.create.topics: true
+                group.protocol: consumer
+                spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+                spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+                spring.json.trusted.packages: "*"
+        retry:
+            topic:
+                enabled: true
+                attempts: 5
+                backoff:
+                    delay: 1s
+                    multiplier: 1.0
+                    max-delay: 1s
+        listener:
+            ack-mode: record
+            concurrency: 1
+            missing-topics-fatal: false
+            observation-enabled: true
+            poll-timeout: 5s
+springdoc:
+    show-actuator: true
+    default-consumes-media-type: application/json
+    default-produces-media-type: application/json
+    writer-with-default-pretty-printer: true
+    writer-with-order-by-keys: true
+    remove-broken-reference-definitions: true
+    api-docs:
+        enabled: true
+        path: /v3/api-docs
+    openapi:
+        info:
+            title: ${spring.application.name}
+    swagger-ui:
+        enabled: true
+        path: /
+        disable-swagger-default-url: true
+        doc-expansion: none
+        filter: true
+        tags-sorter: alpha
+        operations-sorter: alpha
+        try-it-out-enabled: true
+        persist-authorization: true
+        display-request-duration: true
+        default-models-expand-depth: -1
+management:
+    endpoints:
+        access:
+            default: none
+        web:
+            exposure:
+                include: "health,metrics"
+    endpoint:
+        health:
+            access: read-only
+            show-details: when-authorized
+            show-components: when-authorized
+            validate-group-membership: true
+            probes:
+                enabled: true
+            group:
+                liveness:
+                    include: livenessState
+                readiness:
+                    include: readinessState,mongo,redis
+        metrics:
+            access: read-only
+    health:
+        defaults:
+            enabled: true
+        livenessstate:
+            enabled: true
+        readinessstate:
+            enabled: true
+        diskspace:
+            enabled: false
+    metrics:
+        tags:
+            application: ${spring.application.name}
+        distribution:
+            percentiles:
+                "[http.server.requests]": 0.5, 0.95, 0.99
+    observations:
+        annotations:
+            enabled: true
+logging:
+    charset:
+        console: UTF-8
+    level:
+        root: WARN
+        org.springframework.boot.tomcat.TomcatWebServer: INFO
+        org.springdoc.core.events.SpringDocAppInitializer: ERROR
+        com.company: INFO
+    pattern:
+        console: "%n[%d{yyyy-MM-dd}] [%d{HH:mm:ss.SSS}] [${spring.application.name}] [%thread] %cyan([%logger] [%method] [%line] [%marker]) %highlight([%level]): %msg %magenta(%kvp %mdc) %ex%n%n"
+outbox:
+    delay: PT5S
+    lock: PT30S
+    limit: 1000
+    attempts: 3
+resilience:
+    retry:
+        max-retries: 2
+        delay: 250
+        jitter: 100
+        multiplier: 2
+        max-delay: 2500
+    concurrency:
+        limit: 100

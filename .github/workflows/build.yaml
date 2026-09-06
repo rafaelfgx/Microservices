@@ -1,0 +1,93 @@
+name: build
+
+on:
+    push:
+        branches: [main]
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    TESTCONTAINERS_RYUK_DISABLED: true
+
+jobs:
+    dependencies:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+
+            - name: Pull Images
+              run: |
+                  docker pull apache/kafka-native
+                  docker pull mongo
+                  docker pull redis
+
+            - name: Java Setup
+              uses: actions/setup-java@v5
+              with:
+                  java-version: 25
+                  distribution: temurin
+                  cache: maven
+
+            - name: Build Parent
+              run: mvn --batch-mode --quiet --errors --no-transfer-progress clean install
+              working-directory: parent
+
+            - name: Build Starter
+              run: mvn --batch-mode --quiet --errors --no-transfer-progress clean install
+              working-directory: starter
+
+            - name: Upload Artifacts
+              uses: actions/upload-artifact@v7
+              with:
+                  name: dependencies
+                  path: ~/.m2/repository/com/company
+                  retention-days: 1
+
+    services:
+        needs: dependencies
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        strategy:
+            fail-fast: true
+            matrix:
+                service:
+                    - authservice
+                    - configurationservice
+                    - customerservice
+                    - productservice
+                    - orderservice
+                    - paymentservice
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+
+            - name: Pull Images
+              run: |
+                  docker pull apache/kafka-native
+                  docker pull mongo
+                  docker pull redis
+
+            - name: Pull Keycloak Image
+              if: matrix.service == 'authservice'
+              run: docker pull quay.io/keycloak/keycloak
+
+            - name: Java Setup
+              uses: actions/setup-java@v5
+              with:
+                  java-version: 25
+                  distribution: temurin
+                  cache: maven
+
+            - name: Download Artifacts
+              uses: actions/download-artifact@v8
+              with:
+                  name: dependencies
+                  path: ~/.m2/repository/com/company
+
+            - name: Build ${{ matrix.service }}
+              run: mvn --batch-mode --quiet --errors --no-transfer-progress clean verify
+              working-directory: ${{ matrix.service }}

@@ -1,0 +1,35 @@
+filebeat.inputs:
+  - type: filestream
+    id: docker
+    prospector.scanner.symlinks: true
+    parsers:
+      - container:
+          stream: all
+          format: docker
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    processors:
+      - add_docker_metadata: ~
+      - decode_json_fields:
+          fields: ["message"]
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
+      - drop_event:
+          when:
+            not:
+              equals:
+                container.labels.filebeat: "true"
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "microservices"
+
+logging.level: warning
+
+setup.template.name: "microservices"
+setup.template.pattern: "microservices"
+setup.template.overwrite: true
+setup.ilm.enabled: true
+setup.ilm.policy_name: "microservices"
+setup.ilm.overwrite: true
