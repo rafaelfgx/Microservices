@@ -1,0 +1,50 @@
+_format_version: "3.0"
+
+services:
+  - name: authservice
+    url: http://authservice:8010
+    routes:
+      - name: authservice
+        paths:
+          - /authservice
+        strip_path: true
+
+  - name: configurationservice
+    url: http://configurationservice:8015
+    routes:
+      - name: configurationservice
+        paths:
+          - /configurationservice
+        strip_path: true
+
+  - name: customerservice
+    url: http://customerservice:8020
+    routes:
+      - name: customerservice
+        paths:
+          - /customerservice
+        strip_path: true
+
+  - name: productservice
+    url: http://productservice:8025
+    routes:
+      - name: productservice
+        paths:
+          - /productservice
+        strip_path: true
+
+  - name: orderservice
+    url: http://orderservice:8030
+    routes:
+      - name: orderservice
+        paths:
+          - /orderservice
+        strip_path: true
+
+  - name: paymentservice
+    url: http://paymentservice:8035
+    routes:
+      - name: paymentservice
+        paths:
+          - /paymentservice
+        strip_path: true

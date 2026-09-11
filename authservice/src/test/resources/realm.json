@@ -1,0 +1,73 @@
+{
+    "id": "microservices",
+    "displayName": "Microservices",
+    "realm": "microservices",
+    "enabled": true,
+    "sslRequired": "external",
+    "registrationAllowed": true,
+    "loginWithEmailAllowed": true,
+    "duplicateEmailsAllowed": false,
+    "resetPasswordAllowed": true,
+    "editUsernameAllowed": false,
+    "clients": [
+        {
+            "name": "authservice",
+            "clientId": "authservice",
+            "clientAuthenticatorType": "client-secret",
+            "secret": "authservice",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "bearerOnly": false,
+            "fullScopeAllowed": true,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            }
+        }
+    ],
+    "users": [
+        {
+            "username": "service-account-authservice",
+            "enabled": true,
+            "serviceAccountClientId": "authservice",
+            "clientRoles": {
+                "realm-management": [
+                    "manage-users"
+                ]
+            }
+        },
+        {
+            "firstName": "Admin",
+            "lastName": "Admin",
+            "email": "admin@mail.com",
+            "emailVerified": true,
+            "username": "admin",
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "P@$$w0rd",
+                    "temporary": false
+                }
+            ],
+            "enabled": true,
+            "totp": false,
+            "realmRoles": [
+                "admin"
+            ]
+        }
+    ],
+    "roles": {
+        "realm": [
+            {
+                "name": "admin",
+                "description": "Admin"
+            }
+        ]
+    }
+}
