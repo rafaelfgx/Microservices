@@ -1,0 +1,190 @@
+{
+    "id": "microservices",
+    "displayName": "Microservices",
+    "realm": "microservices",
+    "enabled": true,
+    "sslRequired": "external",
+    "registrationAllowed": true,
+    "loginWithEmailAllowed": true,
+    "duplicateEmailsAllowed": false,
+    "resetPasswordAllowed": true,
+    "editUsernameAllowed": false,
+    "clients": [
+        {
+            "name": "authservice",
+            "clientId": "authservice",
+            "clientAuthenticatorType": "client-secret",
+            "secret": "authservice",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "bearerOnly": false,
+            "fullScopeAllowed": true,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            }
+        },
+        {
+            "name": "configurationservice",
+            "clientId": "configurationservice",
+            "clientAuthenticatorType": "client-secret",
+            "secret": "configurationservice",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "bearerOnly": false,
+            "fullScopeAllowed": true,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            }
+        },
+        {
+            "name": "customerservice",
+            "clientId": "customerservice",
+            "clientAuthenticatorType": "client-secret",
+            "secret": "customerservice",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "bearerOnly": false,
+            "fullScopeAllowed": true,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            }
+        },
+        {
+            "name": "productservice",
+            "clientId": "productservice",
+            "clientAuthenticatorType": "client-secret",
+            "secret": "productservice",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "bearerOnly": false,
+            "fullScopeAllowed": true,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            }
+        },
+        {
+            "name": "orderservice",
+            "clientId": "orderservice",
+            "clientAuthenticatorType": "client-secret",
+            "secret": "orderservice",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "bearerOnly": false,
+            "fullScopeAllowed": true,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            }
+        },
+        {
+            "name": "paymentservice",
+            "clientId": "paymentservice",
+            "clientAuthenticatorType": "client-secret",
+            "secret": "paymentservice",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "bearerOnly": false,
+            "fullScopeAllowed": true,
+            "access": {
+                "view": true,
+                "configure": true,
+                "manage": true
+            }
+        }
+    ],
+    "users": [
+        {
+            "username": "service-account-authservice",
+            "enabled": true,
+            "serviceAccountClientId": "authservice",
+            "clientRoles": {
+                "realm-management": ["manage-users"]
+            }
+        },
+        {
+            "firstName": "Admin",
+            "lastName": "Admin",
+            "email": "admin@mail.com",
+            "emailVerified": true,
+            "username": "admin",
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "P@$$w0rd",
+                    "temporary": false
+                }
+            ],
+            "enabled": true,
+            "totp": false,
+            "realmRoles": ["admin"]
+        },
+        {
+            "firstName": "User",
+            "lastName": "User",
+            "email": "user@mail.com",
+            "emailVerified": true,
+            "username": "user",
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "P@$$w0rd",
+                    "temporary": false
+                }
+            ],
+            "enabled": true,
+            "totp": false,
+            "realmRoles": ["user"]
+        }
+    ],
+    "roles": {
+        "realm": [
+            {
+                "name": "admin",
+                "description": "Admin"
+            },
+            {
+                "name": "user",
+                "description": "User"
+            }
+        ]
+    }
+}

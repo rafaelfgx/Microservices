@@ -1,0 +1,9 @@
+spring:
+    config:
+        import: classpath:starter.yml
+---
+server:
+    port: 8015
+spring:
+    application:
+        name: configurationservice
