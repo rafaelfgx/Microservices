@@ -1,0 +1,15 @@
+spring:
+    config:
+        import: classpath:starter.yml
+---
+server:
+    port: 8020
+spring:
+    application:
+        name: customerservice
+    http:
+        serviceclient:
+            auth:
+                base-url: http://localhost:8010
+                connect-timeout: PT5S
+                read-timeout: PT5S
