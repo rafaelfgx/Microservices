@@ -1,0 +1,13 @@
+**/*.bat
+**/*.iml
+**/*.log
+**/*.md
+**/*.ps1
+**/*.sh
+**/.git/
+**/.github/
+**/.idea/
+**/.postman/
+**/.vs/
+**/.vscode/
+**/target/

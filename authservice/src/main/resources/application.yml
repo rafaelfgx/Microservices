@@ -1,0 +1,16 @@
+spring:
+    config:
+        import: classpath:starter.yml
+---
+server:
+    port: 8010
+spring:
+    application:
+        name: authservice
+    http:
+        serviceclient:
+            keycloak:
+                base-url: http://localhost:8005
+                realm: default
+                client-id: ${spring.application.name}
+                client-secret: ${spring.application.name}
