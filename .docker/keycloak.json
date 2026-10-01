@@ -1,0 +1,93 @@
+{
+    "realm": "default",
+    "enabled": true,
+    "clients": [
+        {
+            "clientId": "authservice",
+            "secret": "authservice",
+            "serviceAccountsEnabled": true,
+            "directAccessGrantsEnabled": true
+        },
+        {
+            "clientId": "configurationservice",
+            "secret": "configurationservice",
+            "serviceAccountsEnabled": true
+        },
+        {
+            "clientId": "customerservice",
+            "secret": "customerservice",
+            "serviceAccountsEnabled": true
+        },
+        {
+            "clientId": "productservice",
+            "secret": "productservice",
+            "serviceAccountsEnabled": true
+        },
+        {
+            "clientId": "orderservice",
+            "secret": "orderservice",
+            "serviceAccountsEnabled": true
+        },
+        {
+            "clientId": "paymentservice",
+            "secret": "paymentservice",
+            "serviceAccountsEnabled": true
+        }
+    ],
+    "users": [
+        {
+            "username": "service-account-authservice",
+            "enabled": true,
+            "serviceAccountClientId": "authservice",
+            "clientRoles": {
+                "realm-management": [
+                    "manage-users"
+                ]
+            }
+        },
+        {
+            "username": "admin",
+            "email": "admin@mail.com",
+            "emailVerified": true,
+            "firstName": "Admin",
+            "lastName": "Admin",
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "P@$$w0rd"
+                }
+            ],
+            "realmRoles": [
+                "admin"
+            ]
+        },
+        {
+            "username": "user",
+            "email": "user@mail.com",
+            "emailVerified": true,
+            "firstName": "User",
+            "lastName": "User",
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "P@$$w0rd"
+                }
+            ],
+            "realmRoles": [
+                "user"
+            ]
+        }
+    ],
+    "roles": {
+        "realm": [
+            {
+                "name": "admin"
+            },
+            {
+                "name": "user"
+            }
+        ]
+    }
+}
