@@ -1,0 +1,38 @@
+{
+    "realm": "default",
+    "enabled": true,
+    "clients": [
+        {
+            "clientId": "authservice",
+            "secret": "authservice",
+            "serviceAccountsEnabled": true,
+            "directAccessGrantsEnabled": true
+        }
+    ],
+    "users": [
+        {
+            "username": "service-account-authservice",
+            "enabled": true,
+            "serviceAccountClientId": "authservice",
+            "clientRoles": {
+                "realm-management": [
+                    "manage-users"
+                ]
+            }
+        },
+        {
+            "firstName": "Admin",
+            "lastName": "Admin",
+            "username": "admin",
+            "email": "admin@mail.com",
+            "emailVerified": true,
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "P@$$w0rd"
+                }
+            ]
+        }
+    ]
+}
