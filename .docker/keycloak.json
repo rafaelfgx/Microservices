@@ -1,0 +1,119 @@
+{
+    "realm": "default",
+    "enabled": true,
+    "verifyEmail": true,
+    "resetPasswordAllowed": true,
+    "editUsernameAllowed": true,
+    "bruteForceProtected": true,
+    "failureFactor": 5,
+    "clients": [
+        {
+            "clientId": "authservice",
+            "secret": "authservice",
+            "serviceAccountsEnabled": true,
+            "directAccessGrantsEnabled": true,
+            "optionalClientScopes": [
+                "kc-admin-api"
+            ],
+            "defaultClientScopes": [
+                "basic",
+                "acr",
+                "roles",
+                "profile",
+                "email"
+            ]
+        },
+        {
+            "clientId": "configurationservice",
+            "secret": "configurationservice",
+            "serviceAccountsEnabled": true
+        },
+        {
+            "clientId": "customerservice",
+            "secret": "customerservice",
+            "serviceAccountsEnabled": true
+        },
+        {
+            "clientId": "productservice",
+            "secret": "productservice",
+            "serviceAccountsEnabled": true
+        },
+        {
+            "clientId": "orderservice",
+            "secret": "orderservice",
+            "serviceAccountsEnabled": true
+        },
+        {
+            "clientId": "paymentservice",
+            "secret": "paymentservice",
+            "serviceAccountsEnabled": true
+        }
+    ],
+    "users": [
+        {
+            "username": "service-account-authservice",
+            "enabled": true,
+            "serviceAccountClientId": "authservice",
+            "clientRoles": {
+                "realm-management": [
+                    "manage-users"
+                ]
+            }
+        },
+        {
+            "username": "service-account-customerservice",
+            "enabled": true,
+            "serviceAccountClientId": "customerservice",
+            "realmRoles": [
+                "users:manage"
+            ]
+        },
+        {
+            "firstName": "Admin",
+            "lastName": "Admin",
+            "username": "admin",
+            "email": "admin@mail.com",
+            "emailVerified": true,
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "P@$$w0rd"
+                }
+            ],
+            "realmRoles": [
+                "admin"
+            ]
+        },
+        {
+            "firstName": "User",
+            "lastName": "User",
+            "username": "user",
+            "email": "user@mail.com",
+            "emailVerified": true,
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "P@$$w0rd"
+                }
+            ],
+            "realmRoles": [
+                "user"
+            ]
+        }
+    ],
+    "roles": {
+        "realm": [
+            {
+                "name": "admin"
+            },
+            {
+                "name": "user"
+            },
+            {
+                "name": "users:manage"
+            }
+        ]
+    }
+}
